@@ -322,3 +322,244 @@
 (add-interval (mul-interval (make-interval -5 -1) (make-interval 15 25))
               (mul-interval (make-interval 8 12) (make-interval 15 25)))
 ; (-5 . 285)
+
+
+; 2.2  Hierarchical Data and the Closure Property
+
+; Ex. 2.17
+(define (last-pair l)
+  (if (null? (cdr l))
+      l
+      (last-pair (cdr l))))
+
+; Ex. 2.18
+(define (reverse l)
+  (define (rev l r)
+    (if (null? l)
+        r
+        (rev (cdr l) (cons (car l) r))))
+  (rev l ()))
+
+; Ex. 2.19
+(define (cc amount coin-values)
+  (define first-denomination car)
+  (define except-first-denomination cdr)
+  (define no-more? null?)
+  (cond ((= amount 0) 1)
+        ((or (< amount 0)
+             (no-more? coin-values)) 0)
+        (else
+         (+ (cc amount
+                (except-first-denomination coin-values))
+            (cc (- amount
+                   (first-denomination coin-values))
+                coin-values)))))
+
+(define us-coins (list 50 25 10 5 1))
+(cc 100 us-coins)
+
+; The order of the list does not matter since the function tests
+; all possible combinations anyway.
+
+; Ex. 2.20
+(define (filter f l)
+  (cond ((null? l)
+         ())
+        ((f (car l))
+         (cons (car l) (filter f (cdr l) )))
+        (else
+         (filter f (cdr l) ))))
+(define (same-parity x . l)
+  (cons x
+        (filter (lambda (e)
+                  (= (remainder e 2)
+                     (remainder x 2)))
+                l)))
+
+; Ex. 2.21
+(define (square x) (* x x))
+(define (square-list items)
+  (if (null? items)
+      ()
+      (cons (square (car items))
+            (square-list (cdr items)))))
+
+(define (map proc items)
+  (if (null? items)
+      ()
+      (cons (proc (car items))
+            (map proc (cdr items)))))
+(define (square-list items)
+  (map square items))
+
+; Ex. 2.22
+; The first procedure the answer list in the reverse order
+; because in each iteration it makes a pair whose first element is
+; the intermediate answer list and the second element is
+; the car of the list squared.
+;
+; The second procedure does not work either
+; since in each iteration it constructs a pair by prepending
+; the intermediate answer list to the car of the list squared.
+; The resulting pair's first element is a list, not an integer.
+
+; Ex. 2.23
+(define (for-each f l)
+  (if (not (null? l))
+      ((lambda()
+        (f (car l))
+        (for-each f (cdr l))))))
+
+; Ex. 2.24
+ (list 1 (list 2 (list 3 4)))
+; (1 (2 (3 4)))
+
+; Ex. 2.25
+(let ((l
+       (list 1 3 (list 5 7) 9)))
+  (car (cdr (car (cdr (cdr l))))))
+(let ((l
+       (list (list 7))))
+  (car (car l)))
+(let ((l
+       (list 1 (list 2 (list 3 (list 4 (list 5 (list 6 7))))))))
+  (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr (car (cdr l)))))))))))))
+
+; Ex. 2.26
+(define x (list 1 2 3))
+(define y (list 4 5 6))
+(append x y) ; (1 2 3 4 5 6)
+(cons x y)   ; ((1 2 3) 4 5 6)
+(list x y)   ; ((1 2 3) (4 5 6))
+
+; Ex. 2.27
+(define (deep-reverse x)
+  (if (pair? x)
+      (reverse (map deep-reverse x))
+      x))
+(define x (list (list 1 2) (list 3 4)))
+(deep-reverse x)
+
+; Ex. 2.28
+(define (fringe x)
+  (cond ((null? x)
+         ())
+        ((pair? x)
+         (append (fringe (car x)) (fringe (cdr x))))
+        (else
+         (list x))))
+(define x (list (list 1 2) (list 3 4)))
+(fringe x)
+(fringe (list x x))
+
+; Ex. 2.29
+; a.
+(define (make-mobile left right)
+  (list left right))
+(define (make-branch length structure)
+  (list length structure))
+(define left-branch car)
+(define (right-branch mobile)
+  (car (cdr mobile)))
+(define branch-length car)
+(define (branch-structure branch)
+  (car (cdr branch)))
+; b.
+(define (mobile? structure)
+  (pair? structure))
+(define (branch-weight branch)
+  (let ((s (branch-structure branch)))
+    (if (mobile? s)
+        (total-weight s)
+        s)))
+(define (total-weight m)
+  (+ (branch-weight (left-branch m))
+     (branch-weight (right-branch m))))
+; c.
+(define (balanced? m)
+  (let ((left (left-branch m))
+        (right (right-branch m)))
+    (and (= (branch-torque left)
+            (branch-torque right))
+         (branch-balanced? left)
+         (branch-balanced? right))))
+(define (branch-torque b)
+  (* (branch-length b)
+     (branch-weight b)))
+(define (branch-wieght b)
+  (let ((s (branch-structure b)))
+    (if (mobile? s)
+        (total-weight s)
+        s)))
+(define (branch-balanced? b)
+  (let ((s (branch-structure b)))
+    (if (mobile? s)
+        (balanced? s)
+        #t)))
+; d
+(define (make-mobile left right)
+  (cons left right))
+(define (make-branch length structure)
+  (cons length structure))
+(define right-branch cdr)
+(define branch-structure cdr)
+
+;;;
+
+(define m (make-mobile
+ (make-branch 5 10)
+ (make-branch 3 (make-mobile
+                 (make-branch 7 14)
+                 (make-branch 8 88)))))
+(branch-structure (left-branch (branch-structure (right-branch m))))
+(total-weight m)
+
+(define m (make-mobile
+ (make-branch 3 (make-mobile
+                 (make-branch 6 6)
+                 (make-branch 4 9)))
+ (make-branch 5 (make-mobile
+                 (make-branch 1 8)
+                 (make-branch 8 1)))))
+(balanced? m)
+
+; Ex. 2.30
+(define (square-tree tree)
+  (cond ((null? tree)
+         ())
+        ((pair? tree)
+         (cons (square-tree (car tree))
+               (square-tree (cdr tree))))
+        (else
+         (square tree))))
+(define (square-tree tree)
+  (map (lambda (sub-tree)
+         (if (pair? sub-tree)
+             (square-tree sub-tree)
+             (square sub-tree)))
+       tree))
+(square-tree
+ (list 1
+       (list 2 (list 3 4) 5)
+       (list 6 7)))
+
+; Ex. 2.31
+(define (tree-map proc tree)
+  (map (lambda (sub-tree)
+         (if (pair? sub-tree)
+             (tree-map proc sub-tree)
+             (proc sub-tree)))
+       tree))
+(define (square-tree tree) (tree-map square tree))
+
+; Ex. 2.32
+(define (subsets s)
+  (if (null? s)
+      (list ())
+      (let ((rest (subsets (cdr s))))
+        (append rest (map (lambda (subset)
+                            (cons (car s) subset))
+                          rest)))))
+; Let S(0) be an empty set and S(n) be the set of all subsets of the set with
+; first to n-th elements, E(1) to E(n). S(n) is the union of S(n-1)
+; and a set of all subsets in S(n-1) with E(n) added to each subset.
