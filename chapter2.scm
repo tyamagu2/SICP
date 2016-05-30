@@ -563,3 +563,117 @@
 ; Let S(0) be an empty set and S(n) be the set of all subsets of the set with
 ; first to n-th elements, E(1) to E(n). S(n) is the union of S(n-1)
 ; and a set of all subsets in S(n-1) with E(n) added to each subset.
+
+; Ex. 2.33
+(define (filter predicate sequence)
+  (cond ((null? sequence) ())
+        ((predicate (car sequence))
+         (cons (car sequence) (filter predicate (cdr sequence))))
+        (else (filter predicate (cdr sequence)))))
+
+(define (accumulate op initial sequence)
+  (if (null? sequence)
+      initial
+      (op (car sequence)
+          (accumulate op initial (cdr sequence)))))
+
+(define (map p sequence)
+  (accumulate (lambda (x y) (cons (p x) y)) () sequence))
+
+(define (append seq1 seq2)
+  (accumulate cons seq2 seq1))
+
+(define (length sequence)
+  (accumulate (lambda (x y) (+ y 1)) 0 sequence))
+
+; Ex. 2.34
+(define (horner-eval x coefficient-sequence)
+  (accumulate (lambda (this-coeff higher-terms)
+                (+ this-coeff
+                   (* higher-terms x)
+                   ))
+              0
+              coefficient-sequence))
+
+; Ex. 2.35
+(define (count-leaves t)
+  (accumulate +
+              0
+              (map (lambda (st)
+                     (cond ((null? st) 0)
+                           ((pair? st) (count-leaves st))
+                           (else 1)))
+                   t)))
+
+; Ex. 2.36
+(define (accumulate-n op init seqs)
+  (if (null? (car seqs))
+      ()
+      (cons (accumulate op init (map car seqs))
+            (accumulate-n op init (map cdr seqs)))))
+
+; Ex. 2.37
+; This uses built-in map procedure.
+(define (dot-product v w)
+  (accumulate + 0 (map * v w)))
+
+(define (matrix-*-vector m v)
+  (map (lambda (r) (dot-product r v))  m))
+
+(define (transpose mat)
+  (accumulate-n cons () mat))
+
+(define (matrix-*-matrix m n)
+  (let ((cols (transpose n)))
+    (map (lambda (row)
+           (matrix-*-vector cols row))
+           m)))
+
+(matrix-*-matrix (list (list 2 3) (list 1 4) (list 2 1)) (list (list 3 1 2) (list 2 4 2)))
+
+; Ex. 2.38
+(define (fold-left op initial sequence)
+  (define (iter result rest)
+    (if (null? rest)
+        result
+        (iter (op result (car rest))
+              (cdr rest))))
+  (iter initial sequence))
+
+; The operation must be both associative and commutative to guarantee that
+; fold-right and fold-left produce the same values for any sequence.
+;
+; (fold-right op initial (list e1 e2 e3))
+; = (op e1 (op e2 (op e3 initial)))
+; = (op e1 (op (op e2 e3) initial)) ; by associative property
+; = (op e1 (op initial (op e2 e3))) ; by commutative property
+; = (op (op e1 initial) (op e2 e3)) ; by associative property
+; = (op (op initial e1) (op e2 e3)) ; by commutative property
+; = (op (op (op initial e1) e2) e3) ; by associative property
+; (fold-left op initial (list e1 e2 e3))
+
+; commutative but not associative operator
+(define (commutative-but-not-associative a b)
+  (- (* a b) (+ a b)))
+(commutative-but-not-associative 1 2)
+(commutative-but-not-associative 2 1)
+(commutative-but-not-associative (commutative-but-not-associative 1 2) 5)
+(commutative-but-not-associative 1 (commutative-but-not-associative 2 5)
+(fold-right commutative-but-not-associative 0 (list 1 2 3))
+(fold-left commutative-but-not-associative 0 (list 1 2 3))
+
+; associative but not commutative operator
+(define m (list (list 1 2) (list 3 4)))
+(define n (list (list 5 6) (list 7 8)))
+(matrix-*-matrix m n)
+(matrix-*-matrix n m)
+(matrix-*-matrix (matrix-*-matrix m n) m)
+(matrix-*-matrix m (matrix-*-matrix n m))
+(fold-right matrix-*-matrix (list (list 10 9) (list 8 7)) (list m n m))
+(fold-left matrix-*-matrix (list (list 10 9) (list 8 7)) (list m n m))
+
+; Ex. 2.39
+(define (reverse sequence)
+  (fold-right (lambda (x y) (append y (list x))) () sequence))
+(define (reverse sequence)
+  (fold-left (lambda (x y) (cons y x)) () sequence))
