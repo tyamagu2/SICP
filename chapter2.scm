@@ -677,3 +677,62 @@
   (fold-right (lambda (x y) (append y (list x))) () sequence))
 (define (reverse sequence)
   (fold-left (lambda (x y) (cons y x)) () sequence))
+
+; Ex. 2.40
+(define (enumerate-interval l h)
+  (if (> l h)
+      ()
+      (cons l (enumerate-interval (+ l 1) h))))
+
+(define (flatmap proc seq)
+  (accumulate append
+              ()
+              (map proc seq)))
+
+(define (unique-pairs n)
+  (flatmap (lambda (i)
+              (map (lambda (j) (list i j))
+                   (enumerate-interval 1 (- i 1))))
+            (enumerate-interval 1 n)))
+
+(define (smallest-divisor n)
+  (define (divides? a b) (= (remainder a b) 0))
+  (define (square n) (* n n))
+  (define (find-divisor n t)
+    (cond ((> (square t) n) n)
+          ((divides? n t) t)
+          (else (find-divisor n (+ t 1)))))
+  (find-divisor n 2))
+
+(define (prime? n)
+  (= n (smallest-divisor n)))
+
+(define (prime-sum? pair)
+  (prime? (+ (car pair) (cadr pair))))
+
+(define (make-pair-sum pair)
+  (list (car pair) (cadr pair) (+ (car pair) (cadr pair))))
+
+(define (prime-sum-pairs n)
+  (map make-pair-sum
+       (filter
+        prime-sum?
+        (unique-pairs n))))
+
+; Ex. 2.41
+(define (unique-triples n)
+  (flatmap (lambda (i)
+             (flat-map (lambda (j)
+                         (map (lambda (k)
+                                (list i j k))
+                              (enumerate-interval 1 (- j 1))))
+                       (enumerate-interval 1 (- i 1))))
+           (enumerate-interval 1 n)))
+
+(define (sum l)
+  (accumulate + 0 l))
+
+(define (triples-sum-to s n)
+  (filter (lambda (t)
+            (= (sum t) s))
+          (unique-triples n)))
