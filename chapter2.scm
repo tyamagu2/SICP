@@ -791,3 +791,189 @@
 
 (display (length (queens 8)))
 (display (car (queens 8)))
+
+; Ex. 2.43
+
+; (flatmap
+;   (lambda (new-row)
+;        (map (lambda (rest-of-queens)
+;                         (adjoin-position new-row k rest-of-queens))
+;                     (queen-cols (- k 1))))
+;    (enumerate-interval 1 board-size))
+
+; The procedure given to the above flatmap evaluates (queen-cols (- k 1))
+; every time it gets called by flatmap. Since flatmap iterates over
+; the interval from 1 to board-size, queen-cols gets evaluated board-size times
+; compared to once in the program in exercise 2.42.
+; queen-cols is a recursive procedure, so each evaluation of queen-cols
+; invokes another board-size evaluations of queen-cols until the recursive process
+; reaches the terminal condition.
+; Assuming that the program in exercise 2.42 solves the puzzle in time T,
+; Louis's program takes ( board-size ^ boardize) * T to solve the puzzle.
+
+; Ex. 2.44
+(define (up-split painter n)
+  (if (= n 0)
+      painter
+      (let ((smaller (up-split painter (- n 1))))
+        (below painter (beside smaller smaller)))))
+
+; Ex. 2.45
+(define (split identity-op smaller-op)
+  (define (rec painter n)
+    (if (= n 0)
+        painter
+        (let ((smaller (rec painter (- n 1))))
+          (identity-op painter (smaller-op smaller smaller))))))
+
+; Ex. 2.46
+(define (make-vect x y)
+  (cons x y))
+(define xcor-vect car)
+(define ycor-vect cdr)
+(define (add-vect a b)
+  (make-vect (+ (xcor-vect a)
+                (xcor-vect b))
+             (+ (ycor-vect a)
+                (ycor-vect b))))
+(define (sub-vect a b)
+  (make-vect (- (xcor-vect a)
+                (xcor-vect b))
+             (- (ycor-vect a)
+                (ycor-vect b))))
+(define (scale-vect s v)
+  (make-vect (* s (xcor-vect v))
+             (* s (ycor-vect v))))
+
+; Ex. 2.47
+(define (make-frame origin edge1 edge2)
+  (list origin edge1 edge2))
+(define origin-frame car)
+(define (edge1-frame frame)
+  (car (cdr frame)))
+(define (edge2-frame frame)
+  (car (cdr (cdr frame))))
+
+(define (make-frame origin edge1 edge2)
+  (cons origin (cons edge1 edge2)))
+(define origin-frame car)
+(define (edge1-frame frame)
+  (car (cdr frame)))
+(define (edge2-frame frame)
+  (cdr (cdr frame)))
+
+; Ex. 2.48
+(define (make-segment start end)
+  (cons start end))
+(define start-segment car)
+(define end-segment cdr)
+
+; Ex. 2.49
+(define square-frame
+  (make-frame (make-vect 0.0 0.0)
+              (make-vect 400.0 0.0)
+              (make-vect 0.0 400.0)))
+
+(define diamond-frame
+  (make-frame (make-vect 200.0 0.0)
+              (make-vect 200.0 200.0)
+              (make-vect -200.0 200.0)))
+
+(define (draw-line v1 v2)
+  (display (xcor-vect v1))
+  (display ",")
+  (display (ycor-vect v1))
+  (display ",")
+  (display (xcor-vect v2))
+  (display ",")
+  (display (ycor-vect v2))
+  (newline))
+
+(define (frame-coord-map frame)
+  (lambda (v)
+    (add-vect
+     (origin-frame frame)
+     (add-vect (scale-vect (xcor-vect v)
+                           (edge1-frame frame))
+               (scale-vect (ycor-vect v)
+                           (edge2-frame frame))))))
+
+(define (segments->painter segment-list)
+  (lambda (frame)
+    (for-each
+     (lambda (segment)
+       (draw-line
+        ((frame-coord-map frame) (start-segment segment))
+        ((frame-coord-map frame) (end-segment segment))))
+     segment-list)))
+
+; a
+(define outline
+  (let ((bl (make-vect 0 0))
+        (br (make-vect 1 0))
+        (ur (make-vect 1 1))
+        (ul (make-vect 0 1)))
+    (segments->painter (list (make-segment bl br)
+                             (make-segment br ur)
+                             (make-segment ur ul)
+                             (make-segment ul bl)))))
+; b
+(define x
+  (let ((bl (make-vect 0 0))
+        (br (make-vect 1 0))
+        (ur (make-vect 1 1))
+        (ul (make-vect 0 1)))
+    (segments->painter (list (make-segment bl ur)
+                             (make-segment br ul)))))
+; c
+(define diamond
+  (let ((m1 (make-vect 0.5 0.0))
+        (m2 (make-vect 1.0 0.5))
+        (m3 (make-vect 0.5 1.0))
+        (m4 (make-vect 0.0 0.5)))
+    (segments->painter (list (make-segment m1 m2)
+                             (make-segment m2 m3)
+                             (make-segment m3 m4)
+                             (make-segment m4 m1)))))
+
+; Ex. 50
+(define (transform-painter painter origin corner1 corner2)
+  (lambda (frame)
+    (let ((m (frame-coord-map frame)))
+      (let ((new-origin (m origin)))
+        (painter (make-frame new-origin
+                             (sub-vect (m corner1) new-origin)
+                             (sub-vect (m corner2) new-origin)))))))
+
+(define (flip-vert painter)
+  (transform-painter painter
+                     (make-vect 0.0 1.0)
+                     (make-vect 1.0 1.0)
+                     (make-vect 0.0 0.0)))
+
+(define (flip-horiz painter)
+  (transform-painter painter
+                     (make-vect 1.0 0.0)
+                     (make-vect 0.0 0.0)
+                     (make-vect 1.0 1.0)))
+
+; test
+(define (each-cons items)
+  (if (or (null? items)
+          (null? (cdr items)))
+      ()
+      (cons (cons (car items) (cadr items))
+            (each-cons (cdr items)))))
+
+(define arrow
+  (segments->painter (map (lambda (e) (make-segment (car e) (cdr e)))
+                       (each-cons (list (make-vect 0.0 0.25)
+                                        (make-vect 0.7 0.25)
+                                        (make-vect 0.7 0.0)
+                                        (make-vect 1.0 0.5)
+                                        (make-vect 0.7 1.0)
+                                        (make-vect 0.7 0.75)
+                                        (make-vect 0.0 0.75)
+                                        (make-vect 0.0 0.25))))))
+
+((flip-horiz arrow) canvas-frame)
