@@ -1390,3 +1390,95 @@
            (cond ((= x1 x2) (cons x1 (union-set (cdr s1) (cdr s2))))
                  ((< x1 x2) (cons x1 (union-set (cdr s1) s2)))
                  (else (cons x2 (union-set s1 (cdr s2)))))))))
+
+; Ex. 2.63
+(define entry car)
+(define left-branch cadr)
+(define right-branch caddr)
+(define (make-tree entry left right)
+  (list entry left right))
+(define (element-of-set? x set)
+  (if (null? set)
+      #f
+      (let ((e (entry set)))
+        (cond ((= x e) #t)
+              ((< x e) (element-of-set? x (left-branch set)))
+              ((> x e) (element-of-set? x (right-branch set)))))))
+(define (adjoin-set x set)
+  (if (null? set)
+      (make-tree x () ())
+      (let ((e (entry set)))
+        (cond ((= x e) set)
+              ((< x e)
+               (make-tree e
+                          (adjoin-set x (left-branch set))
+                          (right-branch set)))
+              ((> x e)
+               (make-tree e
+                          (left-branch set)
+                          (adjoin-set x (right-branch set))))))))
+
+(define (tree->list-1 tree)
+    (if (null? tree)
+        ()
+        (append (tree->list-1 (left-branch tree))
+                (cons (entry tree)
+                      (tree->list-1 (right-branch tree))))))
+
+(define (tree->list-2 tree)
+  (define (copy-to-list tree result-list)
+    (if (null? tree)
+        result-list
+        (copy-to-list (left-branch tree)
+                      (cons (entry tree)
+                            (copy-to-list (right-branch tree)
+                                          result-list)))))
+  (copy-to-list tree ()))
+
+; a. Do the two procedures produce the same result for every tree?
+; => yes.
+; What lists do the two procedures produce for the trees in figure 2.16?
+; => All combinations procude the same list, (1 3 5 7 9 11).
+(define t1
+  (make-tree 7
+             (make-tree 3
+                        (make-tree 1 () ())
+                        (make-tree 5 () ()))
+             (make-tree 9
+                        ()
+                        (make-tree 11 () ()))))
+(define t2
+  (make-tree 3
+             (make-tree 1 () ())
+             (make-tree 7
+                        (make-tree 5 () ())
+                        (make-tree 9
+                                   ()
+                                   (make-tree 11 () ())))))
+(define t3
+  (make-tree 5
+             (make-tree 3
+                        (make-tree 1 () ())
+                        ())
+             (make-tree 9
+                        (make-tree 7 () ())
+                        (make-tree 11 () ()))))
+(tree->list-1 t1)
+(tree->list-2 t1)
+(tree->list-1 t2)
+(tree->list-2 t2)
+(tree->list-1 t3)
+(tree->list-2 t3)
+
+; b
+; The number of steps performed by tree->list-1 on a balanced tree with n elements
+; grows as T(n * log(n)).
+; append performes steps proportional to the number of elements in the first list,
+; At each depth of recursive calls, append gets calld 2 ^ depth times.
+; Since the tree is balanced, the sum of the number of elements in the first list
+; at each depth is abount n / 2, meaning that the total steps performed
+; at each depth is T(n).
+; Because the depth of recursive calls is log(n), the total steps grows as T(n * log(n)).
+;
+; The number of steps performed by tree->list-2 is T(n)
+; since each recursive call performes one cons operation.
