@@ -1520,6 +1520,7 @@
 
 ; b
 ; Theta (n)
+; TODO
 
 ; Ex. 2.65
 (define (union-list l1 l2)
@@ -1650,3 +1651,116 @@
 ; => (0 1 1 0 0 1 0 1 0 1 1 1 0)
 (encode (list 'T 'E 'S 'T) sample-tree)
 ; => *** ERROR: bad-symbol -- encode-symbol T
+
+; Ex. 2.69
+(define (generate-huffman-tree pairs)
+  (successive-merge (make-leaf-set pairs)))
+
+(define (successive-merge nodes)
+  (cond ((null? nodes) '())
+        ((null? (cdr nodes)) (car nodes))
+        (else (let ((node (make-code-tree (car nodes) (cadr nodes))))
+          (successive-merge (adjoin-set node (cddr nodes)))))))
+
+(generate-huffman-tree '((A 4) (B 2) (C 1) (D 1)))
+; => ((leaf A 4) ((leaf B 2) ((leaf D 1) (leaf C 1) (D C) 2) (B D C) 4) (A B D C) 8)
+(encode (list 'A 'D 'A 'B 'B 'C 'A) (generate-huffman-tree '((A 4) (B 2) (C 1) (D 1))))
+; => (0 1 1 0 0 1 0 1 0 1 1 1 0)
+
+; Ex. 2.70
+
+(define rock-pairs '((a 2) (NA 16) (BOOM 1) (SHA 3) (GET 2) (YIP 9) (JOB 2) (WAH 1)))
+; (define lyrics '(Get a job Sha na na na na na na na na Get a job Sha na na na na na na na na Wah yip yip yip yip yip yip yip yip yip Sha boom))
+(define lyrics '(GET A JOB SHA NA NA NA NA NA NA NA NA GET A JOB SHA NA NA NA NA NA NA NA NA WAH YIP YIP YIP YIP YIP YIP YIP YIP YIP SHA BOOM))
+(define rock-tree (generate-huffman-tree rock-pairs))
+
+; How many bits are required for the encoding?
+(length (encode lyrics rock-tree))
+; => 84 bits
+
+; What is the smallest number of bits that would be needed to encode this song
+; if we used a fixed-length code for the eight-symbol alphabet?
+(* 3 (length lyrics))
+; => 108 characters
+
+; Ex. 2.71
+; n = 5
+;               ((a b c d e) 31)
+;                    /   \
+;       ((a b c d) 15)   (e 16)
+;            /      \
+;    ((a b c) 7)   (d 8)
+;      /       \
+;  ((a b) 3)  (c 4)
+;   /     \
+; (a 1)  (b 2)
+
+; 1 bit to encode the most frequent symbol
+; n-1 bit to encode the least ferquent symbols
+
+; Ex. 2.72
+; Most frequent: O(n) i.e. The order of the growth to find an element in a list.
+; Least frequent: O(n ^ 2)
+; At each branch the search requires O(n), O(n - 1), O(n - 2), ..., O(1)
+
+; Ex. 2.73
+; a. The above code returns 0 if exp is a number, 1 if exp is the same variable as var
+; and perform 'deriv on the operator of exp.
+; We can't assimilate the predicates like number? or same-variable? into the data-directed dispatch
+; since numbers and variables do not have operator and thus no tags.
+; If we are to use numbers and variables themselves as tags,
+; we need infinite number of entries in the dispatch table.
+
+; b. & c.
+; auxiliary functions such as addend and augend need to be modified accordingly,
+; as now the deriv operation receives only operands, not the entire expression.
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp) (if (same-variable? exp var) 1 0))
+        (else ((get 'deriv (operator exp))
+               (operands exp)
+               var))))
+(define (operator exp) (car exp))
+(define (operands exp) (cdr exp))
+(define (install-deriv-package)
+  (define (deriv-sum operands var)
+    (make-sum (deriv (addend exp) var)
+              (deriv (augend exp) var)))
+  (define (deriv-product operands var)
+    (make-sum (make-product (multiplier exp)
+                            (deriv (multiplicand exp) var))
+              (make-product (deriv (multiplier exp) var)
+                            (multiplicand exp))))
+  (define (deriv-exponent operands var)
+     (make-product (make-product (exponent exp)
+                                 (make-exponentiation (base exp)
+                                                      (make-sum (exponent exp) -1)))))
+  (put 'deriv '+ deriv-sum)
+  (put 'deriv '* deriv-product)
+  (put 'deriv '** deriv-exponent))
+
+; d.
+; The order of operands of get in deriv needs to be changed.
+
+; Ex. 2.74
+; a. The individual divisions' files should be sutructured in a way that there's a consisitent
+; way to get the tag that represents the division and the set of personnel records.
+; For instance, the files should be pairs of a tag and a set of personnel records.
+(define (get-record name file)
+  ((get (file-division file) 'find-record) name))
+
+; b. The record should be structured in a way that there's a consistent way to get the
+; tag that represents the division and a set of keyed information.
+(define (get-salary record)
+  ((get (record-division record) 'get-attr) record 'salary))
+
+; c.
+(define (find-employee-record name files)
+  (if (null? files)
+      (error "bad name" -- find-employee-record)
+      (let ((record-found (get-record name (car files))))
+        (if (null? record-found)
+            (find-employee-record name (cdr files))
+            record-found))))
+
+; d. A new package to operate on the new company's personnel information needs to be installed to the system.
